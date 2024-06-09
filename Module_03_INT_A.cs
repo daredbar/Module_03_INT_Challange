@@ -31,9 +31,10 @@ namespace Module_03_INT_Challange
             // 2. Create reference array and point list
             ReferenceArray dimRefArrayHoriz = new ReferenceArray();
             ReferenceArray dimRefArrayVert = new ReferenceArray();
-            List<XYZ> pointList = new List<XYZ>();
+            List<XYZ> pointListHoriz = new List<XYZ>();
+            List<XYZ> pointListVert = new List<XYZ>();
 
-            //List<Curve> gridCurve = new List<Curve>();
+            List<Curve> gridCurve = new List<Curve>();
 
             // 4. Loop through Line Curve 
             foreach (Element ele in gridCollector)
@@ -42,36 +43,44 @@ namespace Module_03_INT_Challange
                 if (grid != null)
                 {
                     Curve lineCurve = grid.Curve;
-                    //gridCurve.Add(lineCurve);
-                    XYZ midPoint = lineCurve.Evaluate(1,true);
+                    gridCurve.Add(lineCurve);
+                    XYZ pointInt = lineCurve.Evaluate(1,true);
 
 
                     if (IsLineVertical(lineCurve))
                     {
                         dimRefArrayHoriz.Append(new Reference(grid));
-                        pointList.Add(midPoint);
+                        pointListHoriz.Add(pointInt);
                     }
-                    else if (IsLineVertical(lineCurve) == false)
+                    else 
                     {
                         dimRefArrayVert.Append(new Reference(grid));
-                        pointList.Add(midPoint);
+                        pointListVert.Add(pointInt);
                     }
                 }
 
 
             }
-            XYZ point1 = pointList.First();
-            XYZ point2 = pointList.Last();
 
-            Line dimGridLine = Line.CreateBound(point1, point2);
+            //  Create line for dimension
+            //XYZ pointH1 = pointListHoriz.First();
+            //XYZ pointH2 = pointListHoriz.Last();
+            XYZ pointH1 = GetOffsetOrientation(pointListHoriz.First(),gridCurve.Orientation, 3);
+            XYZ pointH2 = GetOffsetOrientation(pointListHoriz.Last(), gridCurve.Orientation, 3);
+
+            XYZ pointV1 = pointListVert.First();
+            XYZ pointV2 = pointListVert.Last();
+
+            Line dimGridLineH = Line.CreateBound(pointH1, pointH2);
+            Line dimGridLineV = Line.CreateBound(pointV1, pointV2);
 
 
 
             using (Transaction t = new Transaction(doc))
             {
                 t.Start("Dimension Grids");
-                Dimension gridDimHor = doc.Create.NewDimension(doc.ActiveView, dimGridLine, dimRefArrayHoriz); 
-                //Dimension gridDimVert = doc.Create.NewDimension(doc.ActiveView, dimGridLine, dimRefArrayVert);
+                Dimension gridDimHor = doc.Create.NewDimension(doc.ActiveView, dimGridLineH, dimRefArrayHoriz); 
+                Dimension gridDimVert = doc.Create.NewDimension(doc.ActiveView, dimGridLineV, dimRefArrayVert);
                 t.Commit();
             }
             return Result.Succeeded;
@@ -86,6 +95,13 @@ namespace Module_03_INT_Challange
                 return true;
 
             return false;
+        }
+        private XYZ GetOffsetOrientation(XYZ point, XYZ orientation, int value)
+        {
+            XYZ newVector = orientation.Multiply(value);
+            XYZ returnPoint = point.Add(newVector);
+
+            return returnPoint;
         }
         //private bool IsLineVertical(Line line)
         //{
