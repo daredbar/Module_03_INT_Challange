@@ -28,41 +28,72 @@ namespace Module_03_INT_Challange
             // Your code goes here
             FilteredElementCollector gridCollector = new FilteredElementCollector(doc).OfClass(typeof(Grid));
 
-            List<Curve> gridCurve = new List<Curve>();
-
             // 2. Create reference array and point list
-            ReferenceArray dimRefArray = new ReferenceArray();
+            ReferenceArray dimRefArrayHoriz = new ReferenceArray();
+            ReferenceArray dimRefArrayVert = new ReferenceArray();
             List<XYZ> pointList = new List<XYZ>();
+
+            //List<Curve> gridCurve = new List<Curve>();
 
             // 4. Loop through Line Curve 
             foreach (Element ele in gridCollector)
             {
-                Curve lineCurve = ele.GetCurve();
+                Grid grid = ele as Grid;
+                if (grid != null)
+                {
+                    Curve lineCurve = grid.Curve;
+                    //gridCurve.Add(lineCurve);
+                    XYZ midPoint = lineCurve.Evaluate(1,true);
 
 
-                if (IsLineVertical(lineCurve))
+                    if (IsLineVertical(lineCurve))
+                    {
+                        dimRefArrayHoriz.Append(new Reference(grid));
+                        pointList.Add(midPoint);
+                    }
+                    else if (IsLineVertical(lineCurve) == false)
+                    {
+                        dimRefArrayVert.Append(new Reference(grid));
+                        pointList.Add(midPoint);
+                    }
+                }
+
+
             }
+            XYZ point1 = pointList.First();
+            XYZ point2 = pointList.Last();
 
+            Line dimGridLine = Line.CreateBound(point1, point2);
 
 
 
             using (Transaction t = new Transaction(doc))
             {
                 t.Start("Dimension Grids");
-                Dimension gridDimHor = doc.Create.NewDimension(doc.ActiveView, dimGridLine, dimRefArray); 
-                Dimension gridDimVert = doc.Create.NewDimension(doc.ActiveView, dimGridLine, dimRefArray);
+                Dimension gridDimHor = doc.Create.NewDimension(doc.ActiveView, dimGridLine, dimRefArrayHoriz); 
+                //Dimension gridDimVert = doc.Create.NewDimension(doc.ActiveView, dimGridLine, dimRefArrayVert);
                 t.Commit();
             }
             return Result.Succeeded;
         }
 
-        private bool IsLineVertical(Line line)
+        private bool IsLineVertical(Curve curLine)
         {
-            if (line.Direction.IsAlmostEqualTo(XYZ.BasisZ) || line.Direction.IsAlmostEqualTo(-XYZ.BasisZ))
+            XYZ p1 = curLine.GetEndPoint(0);
+            XYZ p2 = curLine.GetEndPoint(1);
+
+            if (Math.Abs(p1.X - p2.X) < Math.Abs(p1.Y - p2.Y))
                 return true;
-            else
-                return false;
+
+            return false;
         }
+        //private bool IsLineVertical(Line line)
+        //{
+        //    if (line.Direction.IsAlmostEqualTo(XYZ.BasisZ) || line.Direction.IsAlmostEqualTo(-XYZ.BasisZ))
+        //        return true;
+        //    else
+        //        return false;
+        //}
 
         public static String GetMethod()
         {
