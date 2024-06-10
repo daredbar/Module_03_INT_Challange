@@ -34,7 +34,7 @@ namespace Module_03_INT_Challange
             List<XYZ> pointListHoriz = new List<XYZ>();
             List<XYZ> pointListVert = new List<XYZ>();
 
-            List<Curve> gridCurve = new List<Curve>();
+            //List<Curve> gridCurve = new List<Curve>();
 
             // 4. Loop through Line Curve 
             foreach (Element ele in gridCollector)
@@ -43,8 +43,8 @@ namespace Module_03_INT_Challange
                 if (grid != null)
                 {
                     Curve lineCurve = grid.Curve;
-                    gridCurve.Add(lineCurve);
-                    XYZ pointInt = lineCurve.Evaluate(1,true);
+                    //gridCurve.Add(lineCurve);
+                    XYZ pointInt = lineCurve.Evaluate(0.99,true);
 
 
                     if (IsLineVertical(lineCurve))
@@ -58,15 +58,13 @@ namespace Module_03_INT_Challange
                         pointListVert.Add(pointInt);
                     }
                 }
-
-
             }
 
             //  Create line for dimension
-            //XYZ pointH1 = pointListHoriz.First();
-            //XYZ pointH2 = pointListHoriz.Last();
-            XYZ pointH1 = GetOffsetOrientation(pointListHoriz.First(),gridCurve.Orientation, 3);
-            XYZ pointH2 = GetOffsetOrientation(pointListHoriz.Last(), gridCurve.Orientation, 3);
+            XYZ pointH1 = pointListHoriz.First();
+            XYZ pointH2 = pointListHoriz.Last();
+            //XYZ pointH1 = GetOffsetOrientation(pointListHoriz.First(),gridCurve.Orientation, 3);
+            //XYZ pointH2 = GetOffsetOrientation(pointListHoriz.Last(), gridCurve.Orientation, 3);
 
             XYZ pointV1 = pointListVert.First();
             XYZ pointV2 = pointListVert.Last();

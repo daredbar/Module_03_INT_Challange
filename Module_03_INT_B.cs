@@ -2,12 +2,14 @@
 using Autodesk.Revit.ApplicationServices;
 using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
+using Autodesk.Revit.DB.Architecture;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Selection;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Reflection;
+using System.Windows.Media.Media3D;
 
 #endregion
 
@@ -24,10 +26,82 @@ namespace Module_03_INT_Challange
             // this is a variable for the current Revit model
             Document doc = uiapp.ActiveUIDocument.Document;
 
-            // Your code goes here
+            // Collect Rooms
+            FilteredElementCollector roomCollector = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Rooms);
 
+            // Create reference array and point list
+            ReferenceArray referenceArrayH = new ReferenceArray();
+            ReferenceArray referenceArrayV = new ReferenceArray();
+            List<XYZ> pointListH = new List<XYZ>();
+            List<XYZ> pointListV = new List<XYZ>();
+
+            foreach (SpatialElement room in roomCollector)
+            {
+                //Reference curRef = 
+                Room curRoom = room as Room;
+
+                // Set options and get room boundaries
+                SpatialElementBoundaryOptions options = new SpatialElementBoundaryOptions();
+                options.SpatialElementBoundaryLocation = SpatialElementBoundaryLocation.Finish;
+
+                List<BoundarySegment> boundSegList = curRoom.GetBoundarySegments(options).To;
+
+                //  Loop through room boundaries
+                foreach (BoundarySegment curSeg in boundSegList)
+                {
+                    // Get boundary geometry
+                    Curve boundCurve = curSeg.GetCurve();
+                    XYZ midPoint = boundCurve.Evaluate(0.25, true);
+
+                    // Check if line is vertical
+                    if (IsLineVertical(boundCurve))
+                    {
+                        // Get boundary wall
+                        Element curWall = doc.GetElement(curSeg.ElementId);
+
+                        // Add to ref and point array
+                        referenceArrayH.Append(new Reference(curWall));
+                        pointListH.Add(midPoint);
+                    }
+                    // Check if line is horizontal 
+                    else
+                    {
+                        // Get boundary wall
+                        Element curWall = doc.GetElement(curSeg.ElementId);
+
+                        // Add to ref and point array
+                        referenceArrayV.Append(new Reference(curWall));
+                        pointListV.Add(midPoint);
+                    }
+                }
+            }
+
+            //  Create line for dimension
+            XYZ point1 = pointListH.First();
+            XYZ point2 = pointListH.Last();
+            Line dimLine = Line.CreateBound(point1, new XYZ(point2.X, point1.Y, 0));
+            //Line dimLine = Line.CreateBound(point1, new XYZ(point1.X, point2.Y, 0));
+
+            using (Transaction t = new Transaction(doc))
+            {
+                t.Start("Dimension Room Walls");
+                Dimension newDim = doc.Create.NewDimension(doc.ActiveView, dimLine, referenceArrayH);
+                t.Commit();
+            }
 
             return Result.Succeeded;
+        }
+
+
+        private bool IsLineVertical(Curve curLine)
+        {
+            XYZ p1 = curLine.GetEndPoint(0);
+            XYZ p2 = curLine.GetEndPoint(1);
+
+            if (Math.Abs(p1.X - p2.X) < Math.Abs(p1.Y - p2.Y))
+                return true;
+
+            return false;
         }
 
         public static String GetMethod()
