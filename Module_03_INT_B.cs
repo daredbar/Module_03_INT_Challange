@@ -8,6 +8,7 @@ using Autodesk.Revit.UI.Selection;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Reflection;
 using System.Windows.Media.Media3D;
 
@@ -29,65 +30,76 @@ namespace Module_03_INT_Challange
             // Collect Rooms
             FilteredElementCollector roomCollector = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Rooms);
 
-            // Create reference array and point list
-            ReferenceArray referenceArrayH = new ReferenceArray();
-            ReferenceArray referenceArrayV = new ReferenceArray();
-            List<XYZ> pointListH = new List<XYZ>();
-            List<XYZ> pointListV = new List<XYZ>();
+            int dimenCount = 0;
 
             foreach (SpatialElement room in roomCollector)
             {
                 //Reference curRef = 
                 Room curRoom = room as Room;
 
+                // Create reference array and point list
+                ReferenceArray referenceArrayH = new ReferenceArray();
+                ReferenceArray referenceArrayV = new ReferenceArray();
+                List<XYZ> pointListH = new List<XYZ>();
+                List<XYZ> pointListV = new List<XYZ>();
+
                 // Set options and get room boundaries
                 SpatialElementBoundaryOptions options = new SpatialElementBoundaryOptions();
                 options.SpatialElementBoundaryLocation = SpatialElementBoundaryLocation.Finish;
 
-                List<BoundarySegment> boundSegList = curRoom.GetBoundarySegments(options).To;
+                IList<IList<BoundarySegment>> boundSegList = curRoom.GetBoundarySegments(options);
 
                 //  Loop through room boundaries
-                foreach (BoundarySegment curSeg in boundSegList)
+                foreach (IList<BoundarySegment> boundarySegments in boundSegList)
                 {
-                    // Get boundary geometry
-                    Curve boundCurve = curSeg.GetCurve();
-                    XYZ midPoint = boundCurve.Evaluate(0.25, true);
-
-                    // Check if line is vertical
-                    if (IsLineVertical(boundCurve))
+                    foreach (BoundarySegment curSeg in boundarySegments)
                     {
+                        // Get boundary geometry
+                        Curve boundCurve = curSeg.GetCurve();
+                        XYZ midPoint = boundCurve.Evaluate(0.25, true);
+
                         // Get boundary wall
                         Element curWall = doc.GetElement(curSeg.ElementId);
+                        if (curWall == null) 
+                            continue;
 
-                        // Add to ref and point array
-                        referenceArrayH.Append(new Reference(curWall));
-                        pointListH.Add(midPoint);
-                    }
-                    // Check if line is horizontal 
-                    else
-                    {
-                        // Get boundary wall
-                        Element curWall = doc.GetElement(curSeg.ElementId);
+                        // Check if line is vertical
+                        if (IsLineVertical(boundCurve))
+                        {
+                            // Add to ref and point array
+                            referenceArrayH.Append(new Reference(curWall));
+                            pointListH.Add(midPoint);
+                        }
+                        // Check if line is horizontal 
+                        else
+                        {
+                            // Add to ref and point array
+                            referenceArrayV.Append(new Reference(curWall));
+                            pointListV.Add(midPoint);
+                        }
 
-                        // Add to ref and point array
-                        referenceArrayV.Append(new Reference(curWall));
-                        pointListV.Add(midPoint);
                     }
                 }
-            }
+                //  Create line for dimension
+                XYZ pointH1 = pointListH.First();
+                XYZ pointH2 = pointListH.Last();
+                Line dimLineH = Line.CreateBound(pointH1, new XYZ(pointH2.X, pointH1.Y, 0));
+                //Line dimLine = Line.CreateBound(point1, new XYZ(point1.X, point2.Y, 0));
+                XYZ pointV1 = pointListV.First();
+                XYZ pointV2 = pointListV.Last();
+                Line dimLineV = Line.CreateBound(pointV1, new XYZ(pointV1.X, pointV2.Y, 0));
 
-            //  Create line for dimension
-            XYZ point1 = pointListH.First();
-            XYZ point2 = pointListH.Last();
-            Line dimLine = Line.CreateBound(point1, new XYZ(point2.X, point1.Y, 0));
-            //Line dimLine = Line.CreateBound(point1, new XYZ(point1.X, point2.Y, 0));
-
-            using (Transaction t = new Transaction(doc))
-            {
-                t.Start("Dimension Room Walls");
-                Dimension newDim = doc.Create.NewDimension(doc.ActiveView, dimLine, referenceArrayH);
-                t.Commit();
+                using (Transaction t = new Transaction(doc))
+                {
+                    t.Start("Dimension Room Walls");
+                    Dimension newDim1 = doc.Create.NewDimension(doc.ActiveView, dimLineH, referenceArrayH);
+                    dimenCount++;
+                    Dimension newDim2 = doc.Create.NewDimension(doc.ActiveView, dimLineV, referenceArrayV);
+                    dimenCount++;
+                    t.Commit();
+                }
             }
+            TaskDialog.Show("Dimension Count", $"{dimenCount} Dimenstions added");
 
             return Result.Succeeded;
         }

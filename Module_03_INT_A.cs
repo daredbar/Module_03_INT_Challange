@@ -28,6 +28,8 @@ namespace Module_03_INT_Challange
             // Your code goes here
             FilteredElementCollector gridCollector = new FilteredElementCollector(doc).OfClass(typeof(Grid));
 
+            int dimensionCount = 0;
+
             // 2. Create reference array and point list
             ReferenceArray dimRefArrayHoriz = new ReferenceArray();
             ReferenceArray dimRefArrayVert = new ReferenceArray();
@@ -77,10 +79,14 @@ namespace Module_03_INT_Challange
             using (Transaction t = new Transaction(doc))
             {
                 t.Start("Dimension Grids");
-                Dimension gridDimHor = doc.Create.NewDimension(doc.ActiveView, dimGridLineH, dimRefArrayHoriz); 
+                Dimension gridDimHor = doc.Create.NewDimension(doc.ActiveView, dimGridLineH, dimRefArrayHoriz);
+                dimensionCount++;
                 Dimension gridDimVert = doc.Create.NewDimension(doc.ActiveView, dimGridLineV, dimRefArrayVert);
+                dimensionCount++;
                 t.Commit();
             }
+            TaskDialog.Show("Dimension Count", $"{dimensionCount} Dimenstions added");
+
             return Result.Succeeded;
         }
 
